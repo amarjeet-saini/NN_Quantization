@@ -93,22 +93,30 @@ def main():
     optim = torch.optim.SGD(params=model.parameters(), lr=0.01)
     
     # run inference on fp32 model
+    """ 
     flp_results = eval_model(model=flp_model,
                              data_loader=test_dataloader,
                              loss_fn=loss_fn,
                              accuracy_fn=accuracy_fn,
                              device="cpu")
     print(flp_results)
+    """
 
     # run inference on fxp model 
     config = "symmetric" # do symmetric quantization
     model_quantized = quantize(model=flp_model, test_dataloader=test_dataloader, qconfig="symmetric")
+    """ 
     qmodel_results = eval_model(model=model_quantized, 
                                 data_loader=test_dataloader,
                                 loss_fn=loss_fn, 
                                 accuracy_fn=accuracy_fn, 
                                 device="cpu")
     print(qmodel_results)
+    """
+    
+    dummy_input = (next(iter(test_dataloader))[0])
+    output = "quantized_model.onnx"
+    torch.onnx.export(model_quantized, dummy_input, output, export_params=True)
 
 if __name__ == "__main__":
     main()
