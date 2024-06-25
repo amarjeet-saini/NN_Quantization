@@ -1,6 +1,7 @@
 import torch
-from torchvision import datasets, transforms
+from torchvision import datasets 
 from torch.utils.data import DataLoader
+from torchvision.transforms import ToTensor
 
 BATCH_SIZE = 32
 

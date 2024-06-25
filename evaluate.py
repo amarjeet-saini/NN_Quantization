@@ -4,22 +4,16 @@ import os
 import torch
 from torch import nn
 
-from torch.ao.quantization import get_default_qconfig, QConfigMapping
-from torch.ao.quantization.quantize_fx import prepare_fx, convert_fx, fuse_fx
-from torch.ao.quantization import FakeQuantize, MinMaxObserver, PerChannelMinMaxObserver, QConfig
-from torch.ao.quantization import quantize_fx
-
 from model import *
 from main import train_step
 from data_utils import get_data, get_dataloaders, accuracy_fn
-from quantization_utils import print_size_of_model
+from quantization_utils import print_size_of_model, quantize
 
 from tqdm.auto import tqdm
 
 # Configurations
 BATCH_SIZE=32
 EPOCHS=10
-
 
 def load_model(model:torch.nn.Module, PATH: str, device:str) -> nn.Module: 
     """
@@ -105,53 +99,16 @@ def main():
                              accuracy_fn=accuracy_fn,
                              device="cpu")
     print(flp_results)
-   
-    # ptq 
-    """
-    symmetric_qconfig = torch.ao.quantization.QConfig(
-    activation=FakeQuantize.with_args(
-            observer=MinMaxObserver,
-            quant_min=0,
-            quant_max=255,
-            dtype=torch.quint8,
-            qscheme=torch.per_tensor_symmetric,
-            reduce_range=False),
-        weight=FakeQuantize.with_args(
-            observer=PerChannelMinMaxObserver,
-            quant_min=-128,
-            quant_max=127,
-            dtype=torch.qint8,
-            qscheme=torch.per_channel_symmetric))
 
-    asymmetric_qconfig = torch.ao.quantization.QConfig(
-        activation=FakeQuantize.with_args(
-            observer=MinMaxObserver,
-            quant_min=0,
-            quant_max=255,
-            dtype=torch.quint8,
-            qscheme=torch.per_tensor_affine,
-            reduce_range=False),
-        weight=FakeQuantize.with_args(
-            observer=PerChannelMinMaxObserver,
-            quant_min=-128,
-            quant_max=127,
-            dtype=torch.qint8,
-            qscheme=torch.per_channel_affine))
-    
-    qconfig_mapping = QConfigMapping().set_global(symmetric_qconfig)
-    flp_model.eval()
-    example_inputs = (next(iter(test_dataloader))[0])
-    prepared_model = prepare_fx(flp_model, qconfig_mapping, example_inputs)
-    
-    with torch.no_grad():
-        for image, _ in test_dataloader:
-            prepared_model(image)
-    
-    model_quantized = quantize_fx.convert_fx(prepared_model)
-    qmodel_results = eval_model(model=model_quantized, data_loader=test_dataloader,
-    loss_fn=loss_fn, accuracy_fn=accuracy_fn, device="cpu")
+    # run inference on fxp model 
+    config = "symmetric" # do symmetric quantization
+    model_quantized = quantize(model=flp_model, test_dataloader=test_dataloader, qconfig="symmetric")
+    qmodel_results = eval_model(model=model_quantized, 
+                                data_loader=test_dataloader,
+                                loss_fn=loss_fn, 
+                                accuracy_fn=accuracy_fn, 
+                                device="cpu")
     print(qmodel_results)
-    """
 
 if __name__ == "__main__":
     main()
